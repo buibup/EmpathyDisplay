@@ -1,0 +1,1665 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+<!--    <meta http-equiv="cache-control" content="max-age=0" />
+    <meta http-equiv="cache-control" content="no-cache" />
+    <meta http-equiv="expires" content="0" />
+    <meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT" />
+    <meta http-equiv="pragma" content="no-cache" />-->
+    <title>Display Empathy</title>
+    <script src="http://10.105.10.7/Empathy_NodeRed/2.1.3_jquery.min.js"></script>
+    <link rel="stylesheet" href="http://10.105.10.7/Empathy_NodeRed/bootstrap.min.css">
+    <script src="http://10.105.10.7/Empathy_NodeRed/3.2.0_jquery.min.js"></script>
+    <script src="http://10.105.10.7/Empathy_NodeRed/bootstrap.min.js"></script>
+    <script type="text/javascript">
+        var ws;
+        var wsUri = "ws:";
+        var loc = window.location;
+        var param_dept = getQueryStringValue("dept").toUpperCase();
+        var param_bu = getQueryStringValue("bu");
+        var param_type = getQueryStringValue("type").toLowerCase();
+        var param_gender = getQueryStringValue("gender").toLowerCase();
+        var param_isimage = getQueryStringValue("image").toLowerCase();
+        var locbeacon = "";
+        
+        console.log(loc);
+        if (loc.protocol === "https:") { wsUri = "wss:"; }
+        // This needs to point to the web socket in the Node-RED flow
+        // ... in this case it's ws/simple
+        var param_pathname = loc.pathname.toLowerCase();
+        var resultPath = param_pathname;
+        console.log(param_type);
+        console.log(resultPath);
+
+        if (param_type == "c") {
+            resultPath = resultPath.replace("empathy", "empathycashier");
+            console.log(resultPath);
+        }
+        else if (param_type == "d") {
+            resultPath = resultPath.replace("empathy", "empathypharmacy");
+            console.log(resultPath);
+        }
+
+        if(param_isimage == "t" || param_isimage == "true")
+            param_isimage = true;
+        else if(param_isimage == "f" || param_isimage == "false")
+            param_isimage = false;
+        else
+            param_isimage = null;
+
+        console.log(resultPath);
+        wsUri += "//10.105.10.29:1880/ws" + resultPath;
+        console.log(resultPath);
+        //wsUri += "//" + loc.host + loc.pathname.replace("TestEmpathy1", "ws/TestEmpathy");
+        console.log(wsUri);
+        arrayData = [];
+        arrayDataLine = [];
+        var param_imgHNshow = "";
+        var param_iconline = "<img src='http://10.105.10.7/empathy_nodered/img/line/line1.png' style='padding:1px;'/>";
+        var param_iconfast = "<img src='http://10.105.10.7/empathy_nodered/img/flatStatus/fast.png' height='25px'/>";
+        var param_iconmed = "<img src='http://10.105.10.7/empathy_nodered/img/flatStatus/disch_med.gif' height='25px'/>";
+        var param_iconfinan = "<img src='http://10.105.10.7/empathy_nodered/img/flatStatus/disch_fin.gif' height='25px' style='margin:0 5px 0 5px;'/>";
+        var param_iconfinal = "<img src='http://10.105.10.7/empathy_nodered/img/flatStatus/dis_final.gif' height='25px'/>";
+        var param_iconnew = "<img src='http://10.105.10.7/empathy_nodered/img/flatStatus/new.gif' height='25px' id='new'/>";
+        var param_iconwait = "<img src='http://10.105.10.7/empathy_nodered/img/flatStatus/wait.gif' height='25px'/>";
+        var param_iconSeenDR = "<img src='http://10.105.10.7/empathy_nodered/img/flatStatus/SeenDR.gif' height='25px'/>";
+        var param_iconbill = "<img src='http://10.105.10.7/empathy_nodered/img/flatStatus/bill.gif' height='25px' style='margin-left: 2px;' />";
+        var param_iconbillAll = "<img src='http://10.105.10.7/empathy_nodered/img/flatStatus/Billed_All.gif' height='25px' style='margin-left: 2px;' />";
+        var param_iconNoMed = "<img src='http://10.105.10.7/empathy_nodered/img/flatStatus/noprescription.gif' height='25px'/>";
+        var param_iconHaveMed = "<img src='http://10.105.10.7/empathy_nodered/img/flatStatus/HaveMed.gif' height='25px'/>";
+        var param_iconCollectMed = "<img src='http://10.105.10.7/empathy_nodered/img/flatStatus/CollectMed.gif' height='25px' style='margin-left: 5px;'/>";
+        var param_iconOneMed = "<img src='http://10.105.10.7/empathy_nodered/img/flatStatus/oneprescription.gif' height='25px'/>";
+        var param_iconOneMedCollect = "<img src='http://10.105.10.7/empathy_nodered/img/flatStatus/oneprescription_Collect.gif' height='25px'/>";
+        var param_iconMoreMed = "<img src='http://10.105.10.7/empathy_nodered/img/flatStatus/moreprescription.gif' height='25px'/>";
+        var param_iconMoreMedCollect = "<img src='http://10.105.10.7/empathy_nodered/img/flatStatus/moreprescription_Collect.gif' height='25px'/>";
+        var param_noimg = "data:image/png;base64,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";
+        var param_fastBG = "#ffffff";
+
+        console.log(param_dept);
+
+        function wsConnect() {
+
+            console.log("connect", wsUri);
+            document.getElementById('status').style.color = "orange";
+            document.getElementById('status').innerHTML = "connecting..";
+            ws = new WebSocket(wsUri);
+
+            ws.onmessage = function (msg) {
+                var param_regis = "";  // or uncomment this to overwrite the existing message
+                var line = "";
+                var data = msg.data;
+                var isFCO = false;
+
+                if (data.indexOf("TypeCounter") > -1) {
+                    console.log('Receive Data from Websocket [Counter]');
+                    //console.log('JSON : ' + data.substring(0, 26).split('[{"TypeCounter":"')[1]);
+                    if (param_type == "c") {
+                        console.log('Type [Cashier]');
+                        document.getElementById('txtHead').innerHTML = "Empathy Display Cashier";
+                    } else if (param_type == "d") {
+                        console.log('Type [Pharmacy]');
+                        document.getElementById('txtHead').innerHTML = "Empathy Display Pharmacy";
+                    }
+                    else if (param_type == "all") {
+                        console.log('Type [All]');
+                        document.getElementById('txtHead').innerHTML = "Empathy Display";
+                    }
+
+                    // Rander Page from websocket data
+                    param_regis = DisplayPatients(data);
+                    document.getElementById('divRefresh').innerHTML = param_regis; // replace the messages div with the new "line"
+
+                    SetHilight();
+
+                } else if (data.indexOf("beaconid") > -1) {
+                    console.log('Receive Data from Websocket [Line]');
+                    locbeacon = "";
+                    if(param_dept == "")
+                    {
+                        locbeacon = "all";
+                    }
+                    else
+                    {
+                        locbeacon = param_dept;
+                    }
+                    
+
+                    var param_path = `http://10.105.10.29:1880/Get/GetLocationByBeaconId/`;
+                    var dataList;
+                    $.ajax({
+                        type: "GET",
+                        url: param_path,
+                        data: {
+                            loc: locbeacon
+                        },
+                        async: true,
+                        contentType: "application/json; charset=utf-8",
+                        success: function (dataloc) {       
+                            // Rander Page from websocket data
+                            DisplayDataLine(data, dataloc);
+
+                            SetHilight();
+                        } //success
+                    });
+                }
+
+            }
+            ws.onopen = function () {
+                // update the status div with the connection status
+                document.getElementById('status').style.color = "#2196F3";
+                document.getElementById('status').innerHTML = "connected";
+                console.log("connected");
+                /*
+                var param_pathRegresh = "http://10.105.10.29:1880/Get/RefreshNew?param_type=" + param_type;
+
+                $.get(param_pathRegresh,
+                    function (data) {
+                        console.log("RefreshNew Socket");
+                    });
+*/
+                var param_path = `http://10.105.10.29:1880/Get/GetPatientList`;
+                var dataList;
+                $.ajax({
+                    type: "GET",
+                    url: param_path,
+                    data: {
+                        type: param_type
+                    },
+                    async: true,
+                    contentType: "application/json; charset=utf-8",
+                    success: function (data) {       
+                        // Rander Page from websocket data
+                        param_regis = DisplayPatients(data);
+                        document.getElementById('divRefresh').innerHTML = param_regis; // replace the messages div with the new "line"
+
+                        SetHilight();
+                    } //success
+                });
+            }
+            ws.onclose = function () {
+                // update the status div with the connection status
+                console.log("not connected");
+                document.getElementById('status').style.color = "red";
+                document.getElementById('status').innerHTML = "close connected";
+
+                // in case of lost connection tries to reconnect every 3 secs
+                setTimeout(wsConnect, 3000);
+            }
+        }
+
+        function SetHilight()
+        {
+            if (document.getElementById("hdRow").value != "") {     // clear bg color
+                if (document.getElementById("hdRowType").value == "R") {
+                    if(document.getElementById("table" + document.getElementById("hdRow").value) != null){
+                        if(document.getElementById("hdRowFCO").value === true || document.getElementById("hdRowFCO").value === "true")
+                        {
+                            document.getElementById("table" + document.getElementById("hdRow").value).style.backgroundColor = "#ffdd9c";
+                        }
+                        else
+                        {
+                            document.getElementById("table" + document.getElementById("hdRow").value).style.backgroundColor = "#c6fdbe";
+                        }
+                    }
+                        
+                } 
+                else if (document.getElementById("hdRowType").value == "L") {
+                    if(document.getElementById("tableline" + document.getElementById("hdRow").value) != null)
+                        document.getElementById("tableline" + document.getElementById("hdRow").value).style.backgroundColor = "#c6fdbe";
+                }
+            }
+            
+        }
+
+        function SetClearHilight()
+        {
+            if (document.getElementById("hdRow").value != "") {     // clear bg color
+                if (document.getElementById("hdRowType").value == "R") {
+                    if(document.getElementById("table" + document.getElementById("hdRow").value) != null){
+                        if(document.getElementById("hdRowFCO").value === true || document.getElementById("hdRowFCO").value === "true")
+                        {
+                            document.getElementById("table" + document.getElementById("hdRow").value).style.backgroundColor = "#ffefcf";
+                        }
+                        else
+                        {
+                            document.getElementById("table" + document.getElementById("hdRow").value).style.backgroundColor = "#FFFFFF";
+                        }
+                    }
+                        
+                } 
+                else if (document.getElementById("hdRowType").value == "L") {
+                    if(document.getElementById("tableline" + document.getElementById("hdRow").value) != null)
+                        document.getElementById("tableline" + document.getElementById("hdRow").value).style.backgroundColor = "#FFFFFF";
+                }
+            }
+        }
+
+        function DisplayPatients(param_data) {
+            var param_display = "";
+            var param_length = param_data.length - 2;     //count  data
+
+            if (param_length > 1) {
+                var data = param_data.substring(16, param_length);        // replace [] and word is jsonData first
+                data = data.split(',{"TypeCounter":');   //saparate HN
+
+                for (var y = 0; y < data.length; y++) {
+                    var param_location = "";
+                    var param_episode = "";
+                    var param_search = undefined;
+                    var param_ins = 0;
+                    var param_chkNew = false;
+                    var param_chkBill = false;
+                    var param_promptpayTime = "";
+                    var param_promptpayMessage = "";
+                    var param_mid_code = "";
+
+                    if (data[y].substring(data[y].length, data[y].length - 1) != '}') {
+                        data[y] = data[y] + '}';
+                    }
+                    var DataJson = JSON.parse("{" + String.fromCharCode(34) + "TypeCounter" + String.fromCharCode(34) + ":" + data[y].substring(0, data[y].length));
+
+                    DataJson.HN = DataJson.HN.replace(new RegExp(String.fromCharCode(34), 'g'), '').trim();
+
+                    if (DataJson.json_newregis == null) {  //jsonNewRegis null
+                        DataJson.json_newregis = "[]";
+                    }
+
+                    try {
+                        if (Object.keys(DataJson.Episode).length > 0) {
+                            if (Object.keys(DataJson.Episode.EpisodeInquiry).length > 0) {   //check dept
+
+                                for (var k = 0; k < Object.keys(DataJson.Episode.EpisodeInquiry).length; k++) {
+                                    param_location += DataJson.Episode.EpisodeInquiry[k].CTLOC_Code + ",";
+                                    param_episode += DataJson.Episode.EpisodeInquiry[k].PAADM_ADMNo.substring(1, 3);
+                                }
+                            }
+                        }
+                    }
+                    catch (err) {
+                        console.log(DataJson.HN + "ERROR");
+                    }
+                    var gender = "";
+                    if (DataJson.CTSEX_Desc.indexOf('(Female)') > -1) {
+                        gender = `f`;
+                    } else if (DataJson.CTSEX_Desc.indexOf('(Male)') > -1) {
+                        gender = `m`;
+                    } else {
+                        gender = `n/a`;
+                    }
+
+                    if (param_type == "all" && DataJson.TypeCounter != "CASHIER!!") {
+                        if(DataJson.loc_register != null)
+                            param_location = DataJson.loc_register.split(',');
+
+                        //param_location = param_location.split(',');
+                        if (param_bu != "") {
+                            if (param_episode.indexOf(param_bu) > -1) {
+                                if (param_dept == "") {
+                                    param_ins = 1;
+                                } else {
+                                    if (param_location.includes(param_dept) == true) {
+                                        param_ins = 1;
+                                    }
+                                }
+                            }
+                        } else if (param_dept != "") {
+                            if (param_location.includes(param_dept) == true) {
+                                param_ins = 1;
+                            }
+                        } else {
+                            param_ins = 1;
+                        }
+
+                    } else if (param_type == "c" && DataJson.loc_cashier != null && DataJson.TypeCounter == "CASHIER!!" && DataJson.flag_billed != true && DataJson.flag_finaldis != true) {
+                        if(DataJson.loc_cashier != null)
+                            param_location = DataJson.loc_cashier.split('|');
+
+                        //param_location = param_location.split(',');
+                        if (param_bu != "") {
+                            if (param_episode.indexOf(param_bu) > -1) {
+                                if (param_dept == "") {
+                                    param_ins = 1;
+                                } else {
+                                    if (param_location.includes(param_dept) == true) {
+                                        param_ins = 1;
+                                    }
+                                }
+                            }
+                        } else if (param_dept == "") {
+                            param_ins = 1;
+                        } else {
+                            var param_find = DataJson.loc_cashier.split('|');
+                            if (param_find.includes(param_dept) == true) {
+                                param_ins = 1;
+                            }
+                        }
+                    } else if (param_type == "d" && DataJson.loc_phar != null && DataJson.TypeCounter == "CASHIER!!" && DataJson.have_med == true && DataJson.flag_finaldis != true) {
+                        if(DataJson.loc_phar != null)
+                            param_location = DataJson.loc_phar.split('|');
+
+                        //param_location = param_location.split(',');
+                        if (param_bu != "") {
+                            if (param_episode.indexOf(param_bu) > -1) {
+                                if (param_dept == "") {
+                                    param_ins = 1;
+                                } else {
+                                    if (param_location.includes(param_dept) == true) {
+                                        param_ins = 1;
+                                    }
+                                }
+                            }
+                        } else if (DataJson.flag_finaldis != true) {
+                            if (param_dept == "") {
+                                param_ins = 1;
+                            } else {
+                                var param_find = DataJson.loc_phar.split('|');
+                                if (param_find.includes(param_dept) == true) {
+                                    param_ins = 1;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if(param_ins == 1)
+                    if(param_gender != ""){
+                        if(gender == param_gender)
+                            param_ins = 1;
+                        else
+                            param_ins = 0;
+                    }else{
+                        param_ins = 1;
+                    }
+
+                    if(param_ins == 1)
+                    if(param_isimage != null){
+                        if(DataJson.IsImage == param_isimage)
+                            param_ins = 1;
+                        else
+                            param_ins = 0;
+                    }else{
+                        param_ins = 1;
+                    }
+                    
+                    if (param_ins == 1) {
+                        if (arrayDataLine.length > 0) {
+                            param_search = arrayDataLine.find(x => x.HN === DataJson.HN);
+                            if (param_search != undefined) {
+                                param_search = param_search.profpic;
+                            }
+                        }
+
+                        if (DataJson.IsImage == true) {  //check have picture in trakcare
+                            param_imgHNshow = "http://10.104.10.45/PatientEmpathy_API/api/Patient/GetPatientImage?hn=" + DataJson.HN + "&width=100&height=100";
+                            //param_imgHNshow = "http://10.104.10.45/PatientEmpathyAPITest/api/Patient/GetPatientImagePostgres?hn=" + DataJson.HN + "&width=100&height=100";
+                        } else {
+                            param_imgHNshow = param_noimg;
+                        }
+
+                        var param_typeRegis = "";
+                        if (param_type == "all") {
+                            param_typeRegis = "opd";
+                        } else if (param_type == "c") {
+                            param_typeRegis = "cashier";
+                        } else if (param_type == "d") {
+                            param_typeRegis = "phar";
+                        }
+
+                        if (DataJson.json_newregis != '[]') { //check new regis
+                            for (var x = 0; x < DataJson.json_newregis.length; x++) {
+                                if (DataJson.json_newregis[x].loc_type == param_typeRegis) {
+                                    if (param_dept == "") {
+                                        if (DataJson.json_newregis[x].newregis_status == false) {
+                                            param_chkNew = true;
+                                            break;
+                                        }
+                                    } else {
+                                        if (param_dept == DataJson.json_newregis[x].loc_code) {
+                                            if (DataJson.json_newregis[x].newregis_status == false) {
+                                                param_chkNew = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else {
+                            param_chkNew = true;
+                        }
+
+                        if (DataJson.flag_billed == true)
+                            param_chkBill = true;
+
+                        if (DataJson.flag_fastcheckout == true) {    // cheng BG fast checkout
+                            param_fastBG = "#ffefcf";
+                        } else {
+                            param_fastBG = "#FFFFFF";
+                        }
+
+                        param_display += `<table width="100%" id="table` + DataJson.HN + `" 
+                                            onclick="RenderInfo('patient','` + DataJson.HN + `','');NewRegister('` + DataJson.HN + `', '` + param_dept + `', ` + param_chkNew + `);" class="table-hover table-condensed" style="background-Color:` + param_fastBG + `;">
+                                            <tr>
+                                                <td width='1%'>
+                                                    <img id='imgPatient' ` + y + ` src='` + param_imgHNshow + `' 
+                                                        width='50px' height='50px' style='padding:1px;border:1px solid #009999;' />
+                                                </td>
+                                                <td>&nbsp;
+                                                    <b>Hn: <font color='#339999'>` + DataJson.HN + ` </font></b>&nbsp;`;
+
+                        // [ICON] new, Vip, line, fast, meddis, [no med have med and collect med], finance, bill, final
+                        if (param_chkNew == true) {          //show icon new regis
+                            param_display += param_iconnew.replace("id='new'", "id='new" + DataJson.HN + "'");
+                        }
+
+                        if (DataJson.flag_fastcheckout == true) {      // show icon fast checkout
+                            param_display += param_iconfast;
+                            //DataJson.flag_fastcheckout = param_iconfast;
+                        } else {
+                            //DataJson.flag_fastcheckout = "";
+                        }
+
+                        var paramVip = GetVIP(DataJson.vip.trim());
+                        param_display += paramVip       // show icon vip
+
+                        if (param_search != undefined) {     // show icon line
+                            param_display += param_iconline;
+                        }
+
+                        if (DataJson.flag_meddis == true) {
+                            param_display += param_iconmed;
+
+                            if (DataJson.have_med == true && DataJson.flag_pharcollect == true) {        // show icon close med discharge
+                                param_display += param_iconCollectMed;
+                            } else if (DataJson.have_med == true && DataJson.flag_pharcollect == false) {
+                                param_display += param_iconHaveMed;
+                            } else if (DataJson.have_med == false) {
+                                param_display += param_iconNoMed;
+                            }
+                        }
+                        if (DataJson.flag_financedis == true) {        // show icon close finance discharge
+                            param_display += param_iconfinan;
+                        }
+
+                        if (DataJson.flag_billed == true) {      // show icon bill
+                            param_display += param_iconbillAll;
+                        }
+
+                        param_display += `<br/>&nbsp;&nbsp;<b>Name: <font color='#000'>` + DataJson.Name + `</font></b>`;//0099CC
+                        param_display += `<br/>&nbsp;&nbsp;<b>Age: </b>` + DataJson.PAPER_AgeYr + ` Years ` + DataJson.PAPER_AgeMth + ` Months ` + DataJson.PAPER_AgeDay + ` Days `;
+
+                        if (DataJson.CTSEX_Desc.indexOf('(Female)') > -1) {
+                            param_display += `&nbsp;<b>Gender:</b> F`;
+                        } else if (DataJson.CTSEX_Desc.indexOf('(Male)') > -1) {
+                            param_display += `&nbsp;<b>Gender:</b> M`;
+                        } else {
+                            param_display += `&nbsp;<b>Gender:</b> N/A`;
+                        }
+
+                        param_display += `      </td>
+                                            </tr>
+                                        </table>`;
+
+                        document.getElementById("divRefresh").style.backgroundColor = "#95a5a6";
+                    }
+
+                }
+            } else {
+                document.getElementById("divRefresh").style.border = "0px solid #ffffff";
+                document.getElementById("divRefresh").style.backgroundColor = "#ffffff";
+                param_return = "No Data";
+            }
+            return param_display;
+        }
+
+        function DisplayDataLine(param, dataloc) {
+            var jsonData = JSON.parse(param);
+            var jsonLoc = "";
+            line = "";
+            var param_date = new Date();    //date
+            var param_time = param_date.getTime();  //time
+            var param_patient = "";
+            var param_insline = 0;
+            //var param_allDept = jsonData.location.split(',');
+            var param_Isimg = false;
+            var param_chkNew = true;
+            var locationbybeacon = "";
+
+            if(dataloc != "")
+            {
+                if(dataloc.length > 0)
+                    jsonLoc = JSON.parse(dataloc);
+                else
+                    jsonLoc = [];
+            }
+                
+            /*
+                beaconid:"0000024138"
+                hn:"11-00-264630"
+                mid:"Uf4bdfd0df72102f33a4ba72fd574aeb5"
+                name:"Muay5"
+                status:""
+                type:"leave"
+            */
+            if(jsonData.length > 0){
+                arrayDataLine = [];
+                for(i = 0; i < jsonData.length; i++)
+                {
+                    var lineItem = jsonData[i];
+                    /*
+                    if(jsonLoc != "")
+                    {
+                        if(jsonLoc.length > 0)
+                        {
+                            locationbybeacon = jsonLoc.find(x => x.beaconid === lineItem.beaconid);
+                            if(locationbybeacon == undefined)
+                                locationbybeacon = {"bu":"", "loc_code":""};
+                            }
+                        else{
+                            locationbybeacon = {"bu":"", "loc_code":""};
+                        }
+                    }
+                    else
+                    {
+                        locationbybeacon = {"bu":"", "loc_code":""};
+                    }
+                    */
+                    if(param_bu == "" && locbeacon == "all")
+                    {
+                        locationbybeacon = jsonLoc.find(x => x.beaconid.indexOf(lineItem.beaconid) > -1);
+                        if(locationbybeacon == undefined){
+                            locationbybeacon = {"bu":"", "loc_code":lineItem.beaconid};
+                        }
+                        arrayDataLine.push({
+                            userId: lineItem.mid, DisplayName: lineItem.name
+                            , StatusMessage: lineItem.status, profpic: lineItem.profpic
+                            , HN: lineItem.hn
+                            , location: locationbybeacon.loc_code, location_desc: locationbybeacon.loc_desc, location_time: lineItem.lastlocTime
+                            , stat: lineItem.status
+                        });
+                        line += `<table id = "tableline` + lineItem.mid + `" class="table-hover table-condensed" width="100%" 
+                                    onclick="RenderInfo('line','','`+ lineItem.mid + `');NewRegister('` + lineItem.hn + `', '` + param_dept + `', ` + param_chkNew + `);">
+                                    <tr>
+                                        <td width='20%'>`;
+
+                        if (lineItem.profpic != "")
+                            line += `<img src='data:image/png;base64, ` + lineItem.profpic + `' width='50px' height='50px'/>`;
+                        else
+                            line += `<img src='` + param_noimg + `' width='50px' height='50px'/>`;
+
+                        line += `       </td>
+                                            <td style='text-align:left;color:black;' valign="top">
+                                                <!--<div style="float:right;font-size:x-small;color:gray;">` + lineItem.lastlocTime + `</div>-->
+                                                <b>` + lineItem.name + `</b><br/>
+                                                <span style="color:gray;font-size: small;">` + lineItem.status + `</span>
+                                            </td>
+                                        </tr>
+                                    </table>`;
+                    }
+                    else if(param_bu != "" && locbeacon == "all")
+                    {
+                        locationbybeacon = jsonLoc.find(x => x.beaconid.indexOf(lineItem.beaconid) > -1);
+                        if(locationbybeacon == undefined){
+                            locationbybeacon = {"bu":"", "loc_code":lineItem.beaconid};
+                        }
+
+                        if(locationbybeacon.bu == param_bu)
+                        {
+                            arrayDataLine.push({
+                                userId: lineItem.mid, DisplayName: lineItem.name
+                                , StatusMessage: lineItem.status, profpic: lineItem.profpic
+                                , HN: lineItem.hn
+                                , location: locationbybeacon.loc_code, location_desc: locationbybeacon.loc_desc, location_time: lineItem.lastlocTime
+                                , stat: lineItem.status
+                            });
+                            line += `<table id = "tableline` + lineItem.mid + `" class="table-hover table-condensed" width="100%" 
+                                        onclick="RenderInfo('line','','`+ lineItem.mid + `');NewRegister('` + lineItem.hn + `', '` + param_dept + `', ` + param_chkNew + `);">
+                                        <tr>
+                                            <td width='20%'>`;
+
+                            if (lineItem.profpic != "")
+                                line += `<img src='data:image/png;base64, ` + lineItem.profpic + `' width='50px' height='50px'/>`;
+                            else
+                                line += `<img src='` + param_noimg + `' width='50px' height='50px'/>`;
+
+                            line += `       </td>
+                                                <td style='text-align:left;color:black;' valign="top">
+                                                    <!--
+                                                    <b>Name: </b>` + lineItem.name + `<br/>
+                                                    <b>Status: </b>` + lineItem.status + `-->
+                                                    <b>` + lineItem.name + `</b><br/>
+                                                    <span style="color:gray;font-size: small;">` + lineItem.status + `</span>
+                                                </td>
+                                            </tr>
+                                        </table>`;
+                        }
+                    }
+                    else if(param_bu == "" && locbeacon != "all")
+                    {
+                        locationbybeacon = jsonLoc.find(x => x.beaconid.indexOf(lineItem.beaconid) > -1);
+                        if(locationbybeacon == undefined){
+                            locationbybeacon = {"bu":"", "loc_code":lineItem.beaconid};
+                        }
+
+                        if(locationbybeacon.loc_code == locbeacon)
+                        {
+                            arrayDataLine.push({
+                                userId: lineItem.mid, DisplayName: lineItem.name
+                                , StatusMessage: lineItem.status, profpic: lineItem.profpic
+                                , HN: lineItem.hn
+                                , location: locationbybeacon.loc_code, location_desc: locationbybeacon.loc_desc, location_time: lineItem.lastlocTime
+                                , stat: lineItem.status
+                            });
+
+                            line += `<table id = "tableline` + lineItem.mid + `" class="table-hover table-condensed" width="100%" 
+                                        onclick="RenderInfo('line','','`+ lineItem.mid + `');NewRegister('` + lineItem.hn + `', '` + param_dept + `', ` + param_chkNew + `);">
+                                        <tr>
+                                            <td width='20%'>`;
+
+                            if (lineItem.profpic != "")
+                                line += `<img src='data:image/png;base64, ` + lineItem.profpic + `' width='50px' height='50px'/>`;
+                            else
+                                line += `<img src='` + param_noimg + `' width='50px' height='50px'/>`;
+
+                            line += `       </td>
+                                                <td style='text-align:left;color:black;' valign="top">
+                                                    <!--
+                                                    <b>Name: </b>` + lineItem.name + `<br/>
+                                                    <b>Status: </b>` + lineItem.status + `-->
+                                                    <b>` + lineItem.name + `</b><br/>
+                                                    <span style="color:gray;font-size: small;">` + lineItem.status + `</span>
+                                                </td>
+                                            </tr>
+                                        </table>`;
+                        }
+                    }
+                    else if(param_bu != "" && locbeacon != "all")
+                    {
+                        locationbybeacon = jsonLoc.find(x => x.beaconid.indexOf(lineItem.beaconid) > -1);
+                        if(locationbybeacon == undefined){
+                            locationbybeacon = {"bu":"", "loc_code":lineItem.beaconid};
+                        }
+
+                        if(locationbybeacon.bu == param_bu && locationbybeacon.loc_code == locbeacon)
+                        {
+                            arrayDataLine.push({
+                                userId: lineItem.mid, DisplayName: lineItem.name
+                                , StatusMessage: lineItem.status, profpic: lineItem.profpic
+                                , HN: lineItem.hn
+                                , location: locationbybeacon.loc_code, location_desc: locationbybeacon.loc_desc, location_time: lineItem.lastlocTime
+                                , stat: lineItem.status
+                            });
+                            line += `<table id = "tableline` + lineItem.mid + `" class="table-hover table-condensed" width="100%" 
+                                        onclick="RenderInfo('line','','`+ lineItem.mid + `');NewRegister('` + lineItem.hn + `', '` + param_dept + `', ` + param_chkNew + `);">
+                                        <tr>
+                                            <td width='20%'>`;
+
+                            if (lineItem.profpic != "")
+                                line += `<img src='data:image/png;base64, ` + lineItem.profpic + `' width='50px' height='50px'/>`;
+                            else
+                                line += `<img src='` + param_noimg + `' width='50px' height='50px'/>`;
+
+                            line += `       </td>
+                                                <td style='text-align:left;color:black;' valign="top">
+                                                    <!--
+                                                    <b>Name: </b>` + lineItem.name + `<br/>
+                                                    <b>Status: </b>` + lineItem.status + `-->
+                                                    <b>` + lineItem.name + `</b><br/>
+                                                    <span style="color:gray;font-size: small;">` + lineItem.status + `</span>
+                                                </td>
+                                            </tr>
+                                        </table>`;
+                        }
+                    }
+                    /*
+                    if((locationbybeacon.bu == param_bu && locationbybeacon.loc_code == param_dept) 
+                        || (locationbybeacon.bu == param_bu && dataloc == "" )
+                        || (param_bu == "" && dataloc == "" )){
+                        line += `<table id = "tableline` + lineItem.mid + `" class="table-hover table-condensed" width="100%" 
+                                    onclick="RenderInfo('line','','`+ lineItem.mid + `');NewRegister('` + lineItem.hn + `', '` + param_dept + `', ` + param_chkNew + `);">
+                                    <tr>
+                                        <td width='20%'>`;
+
+                        if (lineItem.profpic != "")
+                            line += `<img src='data:image/png;base64, ` + lineItem.profpic + `' width='50px' height='50px'/>`;
+                        else
+                            line += `<img src='` + param_noimg + `' width='50px' height='50px'/>`;
+
+                        line += `       </td>
+                                            <td style='text-align:left;color:black;' valign="top">
+                                                <!--
+                                                <b>Name: </b>` + lineItem.name + `<br/>
+                                                <b>Status: </b>` + lineItem.status + `-->
+                                                <b>` + lineItem.name + `</b><br/>
+                                                <span style="color:gray;font-size: small;">` + lineItem.status + `</span>
+                                            </td>
+                                        </tr>
+                                    </table>`;
+                    }
+                    */
+                    
+                }
+            }
+            
+            document.getElementById('divLine').innerHTML = line;
+            if (line != "") {
+                document.getElementById("divLine").style.border = "3px solid #6af199";
+                document.getElementById("divLine").style.backgroundColor = "#fff";
+            }
+            else
+            {
+                document.getElementById("divLine").style.border = "3px solid #6af199";
+                document.getElementById("divLine").style.backgroundColor = "#fff";
+            }
+        }
+
+        function NewRegister(hn, dept, isnewregis) {
+            if (dept != "" && isnewregis == true) {
+
+                var param_pathRegis = "http://10.105.10.29:1880/Post/UpdateNewRegister?hn=" + hn + "&loc_newregis=" + dept;
+
+                $.get(param_pathRegis,
+                    function (data) {
+                        //if (data == true){
+                        //    document.getElementById("new" + param_key).style.visibility = "hidden";
+                        //}
+                    });
+            }
+        }
+
+        /*
+            type = 'patient','line'
+        */
+        function RenderInfo(type, hn, param_mid) {
+            var returnContent = "";
+            var param_path = "";
+            var param = "";
+            var param_line = null;
+            var isFCO = false;
+
+            SetClearHilight();
+
+            if (hn == "" && param_mid != "") {
+                param_line = arrayDataLine.find(x => x.userId === param_mid);
+
+                if (param_line.HN != "") {
+                    hn = param_line.HN;
+                }
+            }
+            else if (hn != "" && param_mid == "") {
+
+            }
+
+            param_path = "http://10.105.10.29:1880/Get/GetPatientInfo?hn=" + hn;
+
+            $.get(param_path,
+                function (data) {
+                    if (data.length == 0) {
+                        var param_path45 = "http://10.104.10.45/PatientEmpathyAPITest/api/Patient/GetPatientInfoPost?hn=" + hn;
+                        
+                        $.ajax({
+                            url: param_path45,
+                            type: "post", //send it through get method
+                            success: function (data45) {
+                                if (data45 != null) {
+                                    mid_code = param_mid;
+                                    if (data45.IsImage) {  //check have picture in trakcare
+                                        param_imgHNshow = "http://10.104.10.45/PatientEmpathy_API/api/Patient/GetPatientImage?hn=" + hn + "&width=500&height=500";
+                                        //param_imgHNshow = "http://10.104.10.45/PatientEmpathyAPITest/api/Patient/GetPatientImagePostgres?hn=" + param_line.HN + "&width=500&height=500";
+                                    } else {
+                                        param_imgHNshow = "data:image/png;base64,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";
+                                    }
+
+                                    var vip = GetVIP(data45.PatientCategory.PCAT_Desc);
+                                    var param_Isimg = data45.IsImage;
+                                    var param_patient = `<b><h3>Patient Info: ` + vip + `</h3></b>
+                                                    <div class='divDetail'>
+                                                        <b> Hn: </b><b><font color='#000'>` + data45.PAPMI_No + `</font></b>
+                                                        <b> Name: </b>` + data45.Name + `<br/>
+                                                        <b> BirthDate: </b>` + data45.PAPMI_DOB + `
+                                                        <b> Age: </b>` + data45.PAPER_AgeYr + ` Years ` + data45.PAPER_AgeMth + ` Months ` + data45.PAPER_AgeDay + ` Days 
+                                                        <b> Gender: </b>` + data45.CTSEX_Desc + `<br/>
+                                                        <b> Address: </b>` + data45.Address + `<br/>
+                                                        <b> Tel: </b>` + data45.PAPER_TelH + `
+                                                    </div>`;
+
+                                    var htmlPatientImage = `<img src='` + param_imgHNshow + `' 
+                                                        width='200px' height='200px' style='margin:auto;border:3px solid #fff;border-radius: 50%;box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);'/>`;
+                                    
+                                    var htmlReady2Pay = "";
+                                    var htmlImage = "";
+
+                                    if (param_type == "c") {
+                                        htmlReady2Pay += `<input type="text" id="txtPromptPay" value="" style="width:40%;height:34px;"/>`;
+                                        htmlReady2Pay += `<button class='btn btn-primary' id='` + hn + `' 
+                                            onclick="SendReadyToPay('','` + mid_code + `','txtPromptPay');" style="margin:0px 2px 2px 2px;border-radius:0;" >Ready to pay</button> `;
+                                    }
+                                    
+                                    var htmlLineImage = GetHtmlLineImage(mid_code);
+                                    if (htmlLineImage != "") {
+                                        htmlImage = `<div id='divHideLine` + mid_code + `'>
+                                                    <div class='box'>
+                                                        ` + htmlPatientImage + `
+                                                        ` + htmlLineImage + `
+                                                    </div> 
+                                                    <b><h3>Line Info: `+ param_iconline + `</h3></b>
+                                                    ` + htmlReady2Pay + `
+                                                </div>` + GetHtmlLineDetail(mid_code);
+
+                                        param += htmlImage;
+                                    }
+                                    else {
+                                        htmlImage = `<div id='divHideLine` + mid_code + `'>
+                                                    <div class='box'>
+                                                        ` + htmlPatientImage + `
+                                                    </div>
+                                                </div>`;
+
+                                        param += htmlImage + `<b><h3>Patient Info: </h3></b>` + htmlReady2Pay;
+                                    }
+
+                                    param += param_patient;
+
+                                    returnContent = "<div id='divHide" + hn + "' style='display:none;'>" + param + "</div>";
+                                    document.getElementById('divNonRe').innerHTML = param;
+                                    var bf = document.getElementById('divNonRe').style.border;
+                                    document.getElementById('divNonRe').style.border = "2px solid #9da8ad";
+                                    var at = document.getElementById('divNonRe').style.border;
+                                }
+                            },
+                            error: function (xhr) {
+                                //Do Something to handle error
+                                alert("Send Message Error!!");
+                            }
+                        });
+                    }
+                    else {
+                        var DataJson = data[0].JsonData;
+                        var mid_code = (data[0].mid_code == undefined || data[0].mid_code == null) ? '' : data[0].mid_code;
+                        var flag_fastcheckout = data[0].flag_fastcheckout;
+                        var flag_fastcheckout_dt = data[0].flag_fastcheckout_dt;
+                        var flag_promptpay = data[0].flag_promptpay;
+                        var flag_promptpay_dt = data[0].flag_promptpay_dt;
+                        var flag_promptpay_message = data[0].flag_promptpay_message;
+                        var jsonDischarge = (data[0].jsonDischarge == undefined || data[0].jsonDischarge == null) ? '[]' : data[0].jsonDischarge;
+                        var json_pharcollect = (data[0].json_pharcollect == undefined || data[0].json_pharcollect == null) ? '[]' : data[0].json_pharcollect;
+                        var JsonBill = (data[0].JsonBill == undefined || data[0].JsonBill == null) ? '[]' : data[0].JsonBill;
+                        var IsImage = data[0].isimage;
+                        var vip = data[0].vip;
+                        var location = data[0].loc_register;
+                        var iconFast = "";
+                        var iconVip = "";
+                        var iconLine = "";
+
+                        if (IsImage) {  //check have picture in trakcare
+                            param_imgHNshow = "http://10.104.10.45/PatientEmpathy_API/api/Patient/GetPatientImage?hn=" + DataJson.PAPMI_No + "&width=500&height=500";
+                            //param_imgHNshow = "http://10.104.10.45/PatientEmpathyAPITest/api/Patient/GetPatientImagePostgres?hn=" + DataJson.PAPMI_No + "&width=500&height=500";
+                        } else {
+                            param_imgHNshow = "data:image/png;base64,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";
+                        }
+
+                        if (flag_fastcheckout == true) {      // show icon fast checkout
+                            var tooltipText = ` title="Fast Check Out" />`;
+                            tooltipText = param_iconfast.replace('/>', tooltipText);
+                            iconFast = tooltipText;
+                            isFCO = true;
+                        }
+                        else
+                        {
+                            isFCO = false;
+                        }
+
+                        iconVip = GetVIP(vip.trim());
+
+                        var param_SearchL = undefined;
+                        var param_lineShow = "";
+                        var paramimgPatient = "";
+
+                        if(param_mid != '')
+                            mid_code = param_mid;
+
+                        if (arrayDataLine.length > 0) {
+                            param_search = arrayDataLine.find(x => x.HN === DataJson.HN);
+                            param_SearchL = arrayDataLine.find(x => x.userId === mid_code);
+                            if (param_search != undefined) {
+                                var tooltipText = ` title="Line" />`;
+                                tooltipText = param_iconline.replace('/>', tooltipText);
+                                iconLine = tooltipText;
+                            }
+                        }
+                        var htmlPatientImage = `<img src='` + param_imgHNshow + `' 
+                                            width='200px' height='200px' style='margin:auto;border:3px solid #fff;border-radius: 50%;box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);'/>`;
+                        var htmlLineImage = GetHtmlLineImage(mid_code);
+                        var htmlReady2Pay = "";
+                        var htmlImage = "";
+
+                        if (param_type == "c") {
+                            htmlReady2Pay += `<input type="text" id="txtPromptPay" value="" style="width:40%;height:34px;"/>`;
+                            htmlReady2Pay += `<button class='btn btn-primary' id='` + DataJson.PAPMI_No + `' 
+                                onclick="SendReadyToPay('` + DataJson.PAPMI_No + `','` + mid_code + `','txtPromptPay');" style="margin:0px 2px 2px 2px;border-radius:0;" >Ready to pay</button> `;
+
+                            if (flag_promptpay_dt != null) {
+                                htmlReady2Pay += `<br/><p style='color:#756565;'><h6>` + flag_promptpay_dt + ` > <b>` + flag_promptpay_message + `</b></h6></p>`
+                            }
+                        }
+
+                        if (htmlLineImage != "") {
+                            htmlImage = `<div id='divHideLine` + mid_code + `'>
+                                        <div class='box'>
+                                            ` + htmlPatientImage + `
+                                            ` + htmlLineImage + `
+                                        </div> 
+                                        <b><h3>Line Info: `+ param_iconline + `</h3></b>
+                                        ` + htmlReady2Pay + `
+                                    </div>` + GetHtmlLineDetail(mid_code);
+
+                            param += htmlImage + `<b><h3>Patient Info: ` + iconFast + iconVip + iconLine + `</h3></b>`;
+                        }
+                        else {
+                            htmlImage = `<div id='divHideLine` + mid_code + `'>
+                                        <div class='box'>
+                                            ` + htmlPatientImage + `
+                                        </div>
+                                    </div>`;
+
+                            param += htmlImage + `<b><h3>Patient Info: ` + iconFast + iconVip + iconLine + `</h3></b>` + htmlReady2Pay;
+                        }
+                        if(data[0].flag_meddis_dt == null)
+                            data[0].flag_meddis_dt = "-";
+                        
+                        if (param_type == "c" || param_type == "d") {
+                            param += `<div class='divDetail'>
+                            <div style="float:right;font-size:x-small;color:gray;">` + data[0].flag_meddis_dt + `</div>
+                            <b> Hn: </b><b><font color='#000'>` + DataJson.PAPMI_No + `</font></b><b> Name: <font color='#000'>` + DataJson.Name + `</font></b><br/>
+                            <b> BirthDate: </b>` + DataJson.PAPMI_DOB + `<b> Age: </b><font color='#000'><b>` + DataJson.PAPER_AgeYr + `</b></font> Years ` + DataJson.PAPER_AgeMth + ` Months ` + DataJson.PAPER_AgeDay + ` Days <b> Gender: </b><font color='#000'><b>` + DataJson.CTSEX_Desc + `</b></font><br/>
+                            <b> Address: </b>` + DataJson.Address + `<br/>
+                            <b> Tel: </b>` + DataJson.PAPER_TelH;
+                        }
+                        else if(param_type == "all")
+                        {
+                            param += `<div class='divDetail'>
+                            <div style="float:right;font-size:x-small;color:gray;">` + data[0].timeupdate + `</div>
+                            <b> Hn: </b><b><font color='#000'>` + DataJson.PAPMI_No + `</font></b><b> Name: <font color='#000'>` + DataJson.Name + `</font></b><br/>
+                            <b> BirthDate: </b>` + DataJson.PAPMI_DOB + `<b> Age: </b><font color='#000'><b>` + DataJson.PAPER_AgeYr + `</b></font> Years ` + DataJson.PAPER_AgeMth + ` Months ` + DataJson.PAPER_AgeDay + ` Days <b> Gender: </b><font color='#000'><b>` + DataJson.CTSEX_Desc + `</b></font><br/>
+                            <b> Address: </b>` + DataJson.Address + `<br/>
+                            <b> Tel: </b>` + DataJson.PAPER_TelH;
+                        }
+                        
+                        param += `<br/><b>Episode: </b>`;
+                        if (Object.keys(DataJson.Episode.EpisodeInquiry).length > 0) {
+                            var param_color = "";
+                            for (var k = 0; k < Object.keys(DataJson.Episode.EpisodeInquiry).length; k++) {
+
+
+                                var arlocation = ",";
+                                if(location != null)
+                                    arlocation = location.split(',');
+                                else
+                                    arlocation = DataJson.Episode.EpisodeInquiry[k].CTLOC_Code;
+
+                                // change color epi when dept match
+                                /*
+                                if (DataJson.Episode.EpisodeInquiry[k].CTLOC_Code == param_dept) {
+                                    param_color = "color = 'red'";
+                                } else {
+                                    param_color = "";
+                                }
+                                */
+                                if(arlocation != null && arlocation != ",")
+                                if (arlocation.includes(param_dept) == true && param_dept != "") {
+                                    param_color = "color = 'red'";
+                                } else {
+                                    param_color = "";
+                                }
+                                
+                                if (DataJson.Episode.EpisodeInquiry[k].PAADM_ADMNo == "") {
+                                    param += "<li><font " + param_color + " style='padding-left:7em;'></font> ";
+                                } else {
+                                    if (DataJson.Episode.EpisodeInquiry[k].PAADM_VisitStatus.toUpperCase() == "C") {
+                                        param += "<li><font " + param_color + "><span style='text-decoration:line-through;color:red;'><span style='color:#009999;'>" + DataJson.Episode.EpisodeInquiry[k].PAADM_ADMNo + "</span></span></font> ";
+                                    } else {
+                                        param += "<li><font " + param_color + ">" + DataJson.Episode.EpisodeInquiry[k].PAADM_ADMNo + "</font> ";
+                                    }
+
+                                }
+                                if (DataJson.Episode.EpisodeInquiry[k].CTLOC_Code == param_dept)
+                                    param_color = "color = 'red'";
+                                else
+                                    param_color = "";
+
+                                param += "<b>Time: </b>" + DataJson.Episode.EpisodeInquiry[k].PAADM_AdmTime + "&nbsp;<b>Dept: </b><font " + param_color + ">" +
+                                    DataJson.Episode.EpisodeInquiry[k].CTLOC_Code + "</font>/" +
+                                    DataJson.Episode.EpisodeInquiry[k].CTLOC_Desc;
+
+                                // show icon disMed disFinance disFinal
+                                var ismeddis = false;
+                                var isfinandis = false;
+                                var isfinaldis = false;
+                                if (jsonDischarge != '[]') {
+                                    for (l = 0; l < jsonDischarge[0].EPIAllDisch.length; l++) {
+                                        var param_checkMed = jsonDischarge[0].EPIAllDisch[l];
+                                        if (param_checkMed.PAADM_ADMNo == DataJson.Episode.EpisodeInquiry[k].PAADM_ADMNo) {
+                                            if (param_checkMed.IsMedDisch == true) {
+                                                ismeddis = true;
+                                            }
+                                            if (param_checkMed.IsFinDisch == true) {
+                                                isfinandis = true;
+                                            }
+                                            if (param_checkMed.IsDischg == true) {
+                                                isfinaldis = true;
+                                            }
+                                        }
+                                    }
+                                }
+                                if (ismeddis == true) {          // show icon med discharge
+                                    var tooltipText = ` title="Medical Discharge" />`;
+                                    tooltipText = param_iconmed.replace('/>', tooltipText);
+                                    param += tooltipText;
+                                }
+
+                                //show icon Med when have Med.
+                                if (json_pharcollect != "[]") {
+                                    var countIcon = 0;
+                                    for (var t = 0; t < json_pharcollect.length; t++) {
+                                        if (json_pharcollect[t].PAADM_ADMNo == DataJson.Episode.EpisodeInquiry[k].PAADM_ADMNo) {
+                                            countIcon++;
+
+                                            // Create Tooltip Prescription No
+                                            var tooltipText = "";
+                                            for (var i = 0; i < json_pharcollect[t].PharPrescNoList.length; i++) {
+                                                tooltipText += json_pharcollect[t].PharPrescNoList[i].OEORI_PrescNo + "|";
+                                            }
+                                            tooltipText += "|";
+
+                                            var tooltipText = ` title="` + tooltipText + `" />`;
+
+
+                                            if (json_pharcollect[t].TotalPharPrescNo == 1) {
+                                                if (json_pharcollect[t].EpiCollect == true) {
+                                                    tooltipText = param_iconOneMedCollect.replace('/>', tooltipText).replace("||", "");
+                                                    param += tooltipText;
+                                                } else {
+                                                    tooltipText = param_iconOneMed.replace('/>', tooltipText).replace("||", "");
+                                                    param += tooltipText;
+                                                }
+                                            } else {
+                                                if (json_pharcollect[t].EpiCollect == true) {
+                                                    tooltipText = param_iconMoreMedCollect.replace('/>', tooltipText).replace("||", "");
+                                                    param += tooltipText;
+                                                } else {
+                                                    tooltipText = param_iconMoreMed.replace('/>', tooltipText).replace("||", "");
+                                                    param += tooltipText;
+                                                }
+                                            }
+                                            break;
+                                        }
+                                    }
+                                    if (countIcon == 0 && ismeddis == true) {
+                                        var tooltipText = ` title="No Med" />`;
+                                        tooltipText = param_iconNoMed.replace('/>', tooltipText);
+                                        param += tooltipText;
+                                    }
+                                }
+                                else {
+                                    if (ismeddis == true) {
+                                        var tooltipText = ` title="No Med" />`;
+                                        tooltipText = param_iconNoMed.replace('/>', tooltipText);
+                                        param += tooltipText;
+                                    }
+                                }
+
+                                if (isfinandis == true) {        //show icon financial
+                                    var tooltipText = ` title="Finance Discharge" />`;
+                                    tooltipText = param_iconfinan.replace('/>', tooltipText);
+                                    param += tooltipText;
+                                }
+
+                                //show icon Bill when have bill no.
+                                if (JsonBill != '[]') {
+                                    if (JsonBill.length > 0) {
+                                        for (var w = 0; w < JsonBill.length; w++) {
+                                            if (JsonBill[w].IsBilled == true && JsonBill[w].PAADM_ADMNO == DataJson.Episode.EpisodeInquiry[k].PAADM_ADMNo) {
+
+                                                // Create Tooltip Billed No
+                                                var tooltipText = "";
+                                                for (var i = 0; i < JsonBill[w].ListBilled.length; i++) {
+                                                    tooltipText += JsonBill[w].ListBilled[i].ARPBL_BillNo + "|";
+                                                }
+                                                tooltipText += "|";
+
+                                                var tooltipText = ` title="` + tooltipText + `" />`;
+                                                var tooltipText = param_iconbill.replace('/>', tooltipText).replace("||", "");
+
+                                                param += tooltipText;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (isfinaldis == true) {        //show icon final
+                                    param += param_iconfinal;
+                                }
+
+                                // Display Consult
+                                // <div style="background-color: #F1F0e7;margin-left: 20px;padding-right: 0px;/* width:100%; */"><li>Test</li></div>
+                                if(DataJson.Episode.EpisodeInquiry[k].AppConsults != undefined)
+                                if(DataJson.Episode.EpisodeInquiry[k].AppConsults.length > 0)
+                                {
+                                    /*"AppConsults": [
+                                        {
+                                            "AS_Date": "12/09/2017",
+                                            "AS_SessStartTime": "11:30",
+                                            "APPT_Status": "D",
+                                            "PAADM_VisitStatus": "A",
+                                            "CTLOC_Code": "11JAPAN",
+                                            "CTLOC_Desc": "1-Japanese Medical Center",
+                                            "CTPCP_Desc": "มยุขะ โฮริคาวา,พ.ญ.ดร.",
+                                            "SER_Desc": "ตรวจ และ ปรึกษา (Check up and Consult)"
+                                        }
+                                    ]*/
+                                    
+                                    var consult_status = {"I":"Inserted",
+                                                            "A":"Admitted",
+                                                            "T":"Transferred",
+                                                            "X":"Cancelled",
+                                                            "C":"Closed",
+                                                            "P":"Postponed",
+                                                            "N":"NotAttended",
+                                                            "H":"Hold(Postponed)",
+                                                            "J":"Hold(Inserted)",
+                                                            "W":"Could Not Wait",
+                                                            "S":"Arrived Not Seen",
+                                                            "D":"Departed"};
+                                     /*   */
+                                    for(iconsult = 0; iconsult < DataJson.Episode.EpisodeInquiry[k].AppConsults.length; iconsult++){
+                                        var statusDesc = consult_status[DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].APPT_Status];
+
+                                        if(DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].APPT_Status == "SS"){
+                                            if(DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].CTLOC_Code == param_dept)
+                                            {
+                                                param += `<div class="divConsult">
+                                                                - <span style='text-decoration:line-through;color:red;'><span style='color:#757575;'><b>` + DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].AS_SessStartTime + `</b>&nbsp;
+                                                                <b><font color="red">` + DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].CTLOC_Code + `</font>/` + DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].CTLOC_Desc + `</b>
+                                                                /<b>` + DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].CTPCP_Desc + `</b></span></span>
+                                                                <font color="red">(` + statusDesc + `)</font>
+                                                            </div>`;
+                                            }
+                                            else
+                                            {
+                                                param += `<div class="divConsult">
+                                                                - <span style='text-decoration:line-through;color:red;'><span style='color:#757575;'><b>` + DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].AS_SessStartTime + `</b>&nbsp;
+                                                                <b>` + DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].CTLOC_Code + `/` + DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].CTLOC_Desc + `</b>
+                                                                /<b>` + DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].CTPCP_Desc + `</b></span></span>
+                                                                <font color="red">(` + statusDesc + `)</font>
+                                                            </div>`;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            if(DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].CTLOC_Code == param_dept)
+                                            {
+                                                param += `<div class="divConsult">
+                                                                - <b>` + DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].AS_SessStartTime + `</b>&nbsp;
+                                                                <b><font color="red">` + DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].CTLOC_Code + `</font>/` + DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].CTLOC_Desc + `</b>
+                                                                /<b>` + DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].CTPCP_Desc + `</b>
+                                                                <font color="#2196f3">(` + statusDesc + `)</font>
+                                                            </div>`;
+                                            }
+                                            else
+                                            {
+                                                param += `<div class="divConsult">
+                                                                - <b>` + DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].AS_SessStartTime + `</b>&nbsp;
+                                                                <b>` + DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].CTLOC_Code + `/` + DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].CTLOC_Desc + `</b>
+                                                                /<b>` + DataJson.Episode.EpisodeInquiry[k].AppConsults[iconsult].CTPCP_Desc + `</b>
+                                                                <font color="#2196f3">(` + statusDesc + `)</font>
+                                                            </div>`;
+                                            }
+                                        }                                        
+                                    }
+                                }
+
+                                param += "</li>";
+                            }
+                        }
+                        var nowDate = new Date();
+                        if (param_type != "CASHIER!!" && param_type == "all") {
+                            if (Object.keys(DataJson.Appointments).length > 0) {
+                                param += "</div><b><h3>Appointment : </h3></b>";
+                                param += "<div class='divDetail'>";
+
+                                for (var j = 0; j < Object.keys(DataJson.Appointments).length; j++) {
+                                    if(DataJson.Appointments[j].AS_Date == GetDateString(nowDate))
+                                    {
+                                        param += `<font color="#2196f3">`;
+                                    }
+                                    
+                                    param += `<li> `;
+
+                                    param += `<b>Date: </b>` + DataJson.Appointments[j].AS_Date + ` <b>Time:</b> ` + DataJson.Appointments[j].AS_SessStartTime + ` <b>Status:</b> ` + GetStatusAppointment(DataJson.Appointments[j].APPT_Status);
+
+                                    if (DataJson.Appointments[j].CTLOC_Desc == "") {
+                                        param += `<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Dept: </b>` + DataJson.Appointments[j].CTLOC_Code;
+                                    } else {
+                                        param += `<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Dept: </b>` + DataJson.Appointments[j].CTLOC_Code + `-` +
+                                            DataJson.Appointments[j].CTLOC_Desc;
+                                    }
+                                    param += `</li>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`;
+                                    if (DataJson.Appointments[j].SER_Desc == "") {
+                                        param += `<b>Detail: </b>-`;
+                                    } else {
+                                        param += `<b>Detail: </b>` + DataJson.Appointments[j].SER_Desc;
+                                    }
+                                    param += `<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`;
+                                    if (DataJson.Appointments[j].CTPCP_Desc == "") {
+                                        param += `<b>Physician: </b>-`;
+                                    } else {
+                                        param += `<b>Physician: </b>` + DataJson.Appointments[j].CTPCP_Desc;
+                                    }
+                                    if(DataJson.Appointments[j].AS_Date == GetDateString(nowDate))
+                                    {
+                                        param += `</font>`;
+                                    }
+                                    param += `<br/>`;
+                                }
+
+                                
+                            }
+                        }
+                        param += `</div>`
+                        if (Object.keys(DataJson.AlertMsgs).length > 0) {
+                            if (DataJson.AlertMsgs[0].ALM_Message != "") {
+                                param += "<b><h3>Patient Alert :</h3></b>";
+                                param += "<div class='divDetail'>"
+                                for (var j = 0; j < Object.keys(DataJson.AlertMsgs).length; j++) {
+                                    param += DataJson.AlertMsgs[j].ALERTCAT_Desc + " - " + DataJson.AlertMsgs[j].ALM_Message + "<br/>";
+                                }
+                                param += "</div>"
+                            }
+                        }
+                        if (Object.keys(DataJson.CRMs).length > 0) {
+                            param += "<b><h3>CRMs :</h3></b>";
+                            param += "<div class='divDetail'>"
+                            for (var j = 0; j < Object.keys(DataJson.CRMs).length; j++) {
+                                param += DataJson.CRMs[j].CRM_Type + " - " + DataJson.CRMs[j].CRM_DES + "<br/>";
+                            }
+                            param += "</div>"
+                        }
+
+                        returnContent = "<div id='divHide" + DataJson.PAPMI_No + "' style='display:none;'>" + param + "</div>";
+                        document.getElementById('divNonRe').innerHTML = param;
+                        var bf = document.getElementById('divNonRe').style.border;
+                        document.getElementById('divNonRe').style.border = "2px solid #9da8ad";
+                        var at = document.getElementById('divNonRe').style.border;
+
+                        
+                    }
+
+                    //keep hn on focus
+                    if(type == 'line'){ 
+                        document.getElementById("hdRow").value = param_mid;
+                        document.getElementById("hdRowType").value = "L";
+                        document.getElementById("hdRowFCO").value = false;
+                    }
+                    else if(type == 'patient'){
+                        document.getElementById("hdRow").value = hn;
+                        document.getElementById("hdRowType").value = "R";
+                        document.getElementById("hdRowFCO").value = isFCO;
+                    }
+
+                    SetHilight();
+                });
+        }
+
+        function GetDateString(dtNow) {
+            var dateStr = padStr(dtNow.getDate()) + `/` + padStr(1 + dtNow.getMonth()) + `/` + padStr(dtNow.getFullYear());
+            return dateStr;
+        }
+
+        function padStr(i) {
+            return (i < 10) ? "0" + i : "" + i;
+        }
+
+        function GetStatusAppointment(param_status) {
+            if (param_status == "I") {
+                return "Inserted"
+            } else if (param_status == "A") {
+                return "Admitted"
+            } else if (param_status == "T") {
+                return "Transferred"
+            } else if (param_status == "X") {
+                return "Cancelled"
+            } else if (param_status == "C") {
+                return "Closed"
+            } else if (param_status == "P") {
+                return "Postponed"
+            } else if (param_status == "N") {
+                return "NotAttended"
+            } else if (param_status == "H") {
+                return "Hold(Postponed)"
+            } else if (param_status == "J") {
+                return "Hold(Inserted)"
+            } else if (param_status == "W") {
+                return "Could Not Wait"
+            } else if (param_status == "S") {
+                return "Arrived Not Seen"
+            } else if (param_status == "D") {
+                return "Departed"
+            } else {
+                return ""
+            }
+        }
+
+        function getQueryStringValue(key) {
+            return decodeURIComponent(window.location.search.replace(new
+                RegExp("^(?:.*[&\\?]" + encodeURIComponent(key).replace(/[\.\+\*]/g, "\\$&") + "(?:\\=([^&]*))?)?.*$", "i"), "$1"));
+        }
+
+        function GetHtmlLineDetail(param_mid) {
+            var param_SearchL = undefined;
+            var param_lineShow = "";
+            var locDisplay = "";
+            param_SearchL = arrayDataLine.find(x => x.userId === param_mid);
+
+            if (param_SearchL != undefined) {
+                if(param_SearchL.location != "" && param_SearchL.location_desc != null)
+                    locDisplay = param_SearchL.location + `/` + param_SearchL.location_desc;
+                else if(param_SearchL.location != "" && (param_SearchL.location_desc == null || param_SearchL.location_desc == ""))
+                    locDisplay = param_SearchL.location;
+                else
+                    locDisplay = `-`;
+
+                param_lineShow += `<div class='divDetail'>
+                                        <div style="float:right;font-size:x-small;color:gray;">` + param_SearchL.location_time + `</div>
+                                        <b> Name: </b>` + param_SearchL.DisplayName + `<br/>
+                                        <b> Status: </b>` + param_SearchL.StatusMessage + `<br/>
+                                        <b> Location: </b>` + locDisplay + ` </b>
+                                    </div>`;
+            }
+            return param_lineShow;
+        }
+
+        function GetHtmlLineImage(param_mid) {
+            var param_SearchL = undefined;
+            var param_lineShow = "";
+            var paramimgPatient = "";
+            param_SearchL = arrayDataLine.find(x => x.userId === param_mid);
+
+            if (param_SearchL != undefined) {
+
+                if (param_SearchL.profpic != "") {
+                    param_lineShow += `<img src='data:image/png;base64, ` + param_SearchL.profpic + `' 
+                                                    width='200px' height='200px' style='margin:auto;border:3px solid #fff;border-radius: 50%;box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);'/>`;
+                } else {
+                    param_lineShow += `<img src='` + param_noimg + `' 
+                                                    width='200px' height='200px' style='margin:auto;border:3px solid #fff;border-radius: 50%;box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);'/>`;
+                }
+            }
+            return param_lineShow;
+        }
+
+        function GetVIP(param_vip) {
+            var param_return = "";
+            if (param_vip != null || param_vip != '') {
+                var param_vip = param_vip.trim();
+                if (param_vip == "VIP" || param_vip == "VIP2" || param_vip == "VIP2 connex" || param_vip == "VIP3") {
+                    param_return = "http://10.105.10.7/empathy_nodered/img/vip/vip2.png";
+                } else if (param_vip == "VIP1" || param_vip == "VIP1 + VIP1 Exclusive Member" || param_vip == "VIP1 Exclusive Member" || param_vip == "VIP2Connex + VIP1 Exclusive Member" || param_vip == "VIP2 + VIP1 Exclusive Member" || param_vip == "VIP3 + VIP1 Exclusive Member" || param_vip == "VVIP") {
+                    param_return = "http://10.105.10.7/empathy_nodered/img/vip/vip1.png";
+                } else if (param_vip == "VIP Special Case") {
+                    param_return = "http://10.105.10.7/empathy_nodered/img/vip/VIP Special Case.png";
+                } else if (param_vip == "VIP1DIVINE" || param_vip == "VIP1 Divine") {
+                    param_return = "http://10.105.10.7/empathy_nodered/img/vip/VIP1DIVINE.png";
+                }
+
+                if (param_return != "") {
+                    param_return = "<img src='" + param_return + "' title='" + param_vip + "'/>";
+                }
+
+            }
+
+            return param_return
+        }
+
+        function SendReadyToPay(param_hn, param_mid, param_message_id) {
+            var id_ = param_hn;
+            //var name_ ="txtPromptPay";
+            var param_message = document.getElementById(param_message_id).value;
+            if (param_message.trim() != '') {
+                $.ajax({
+                    url: "http://10.105.10.29:1880/Post/SendMessage",
+                    type: "get", //send it through get method
+                    data: {
+                        hn: param_hn,
+                        message: param_message.replace("'", "''"),
+                        mid: param_mid
+                    },
+                    success: function (response) {
+                        var selectid;
+
+                        if (param_hn != "")
+                            selectid = "table" + id_;
+                        else
+                            selectid = "tableline" + param_mid;
+
+                        alert("Send Message Success!!");
+                        document.getElementById("txtPromptPay").value = "";
+                        //alert(`Send Message "` + param_message +`" to HN "`+ param_hn +`" Success`);
+                        console.log(response);
+                        if (response[0].fn_UpdatePromptPay == true) {
+                            document.getElementById(selectid).click();
+                        }
+                    },
+                    error: function (xhr) {
+                        //Do Something to handle error
+                        alert("Send Message Error!!");
+                    }
+                });
+
+            }
+            else {
+                alert('Please Input Message!!!');
+                document.getElementById(param_message_id).focus();
+            }
+
+        }
+    </script>
+    <style type="text/css">
+        html, 
+        body {
+            height: 100%;
+            background-image: url("http://10.105.10.7/Empathy_NodeRed/bgEmpathy.jpg");
+            background-repeat: no-repeat;
+            background-size: 100% 100%;
+        }
+
+        .divleft {
+            position: fixed;
+            left: 1%;
+            float: left;
+            width: 35%;
+            padding: 7px;
+            overflow-y: auto;
+            height: 80%;
+            color: #7f8c8d;
+            border-radius: 10px;
+        }
+
+        .divleft:-webkit-scrollbar {
+            width: 12px;
+        }
+
+        .divleft:-webkit-scrollbar-track {
+            -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .divleft:-webkit-scrollbar-thumb {
+            border-radius: 10px;
+            -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.5);
+        }
+
+        .divDetail {
+            width: 100%;
+            border: 2px solid #90A4AE;
+            /* #00CDCD; */
+            -webkit-border-radius: 10px;
+            -moz-border-radius: 10px;
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0.1em 0.1em 0.2em #a8a9a9;
+            background-color: #fff;
+        }
+
+        .divcenter {
+            position: fixed;
+            left: 37%;
+            width: 40%;
+            padding: 5px;
+            height: 80%;
+            color: #757575;
+            overflow: auto;
+            -webkit-border-radius: 10px;
+            -moz-border-radius: 10px;
+            border-radius: 10px;
+        }
+
+        .divcenter:-webkit-scrollbar {
+            width: 12px;
+        }
+
+        .divcenter:-webkit-scrollbar-track {
+            -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .divcenter:-webkit-scrollbar-thumb {
+            border-radius: 10px;
+            -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.5);
+        }
+
+        .divright {
+            position: fixed;
+            right: 2%;
+            width: 20%;
+            padding: 5px;
+            height: 80%;
+            color: #009999;
+            overflow: auto;
+            -webkit-border-radius: 10px;
+            -moz-border-radius: 10px;
+            border-radius: 10px;
+        }
+
+        .divright:-webkit-scrollbar {
+            width: 12px;
+        }
+
+        .divright:-webkit-scrollbar-track {
+            -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .divright:-webkit-scrollbar-thumb {
+            border-radius: 10px;
+            -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.5);
+        }
+
+        .H2Class {
+            /*left: 30px;*/
+            position: relative;
+            color: #868383;
+            /*#05B8CC; */
+            text-shadow: #a8a9a9 0.1em 0.1em 0.2em;
+        }
+
+        .logoSamit {
+            left: 30px;
+            top: 5px;
+            position: relative;
+        }
+
+        .logoLine {
+            left: 30%;
+            top: 5px;
+            position: relative;
+        }
+
+        .line {
+            border: 1px solid #263c90;
+        }
+
+        .divHead {
+            /*background:url("http://10.105.10.7/Empathy_NodeRed/bgHead.jpg") left top; */
+            /*background-color: #E0E0E0;*/
+            /*white; */
+            /*background-image: url('http://10.105.10.7/Empathy_NodeRed/bgHead.jpg'); 
+            background-image: url('http://10.105.10.7/Empathy_NodeRed/img/BG/black_white_flower__bg__1600x900__free__by_epicalypses-d6fmbil.png');*/
+            /*background-size: auto 100%;
+            background-repeat: no-repeat;
+            background-position: left top;
+            z-index: -999;
+            min-height: 100%;
+            min-width: 100px;
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-size: 200%;*/
+        }
+
+        .box {
+            text-align: center;
+        }
+
+        /*
+            item hover
+        */
+        .table-hover>tbody>tr:hover {
+			background-color: #b4fda9;
+		}
+
+        .divConsult {
+            background-color: #F1F0e7;
+            margin-left: 40px;
+            padding-right: 0px;
+            font-size: smaller;
+            margin-bottom: 1px;
+        }
+    </style>
+
+</head>
+
+<body onload="wsConnect();" class="divHead">
+    <font face="Arial">
+        <table width='100%'>
+            <tr>
+                <td width='150px'>
+                    <img src="http://10.105.10.7/Empathy_NodeRed/Samitivej.png" class="logoSamit" height="75px" />
+                </td>
+                <td>
+                    <h2 id='txtHead' class="H2Class">Empathy Display</h2>
+                </td>
+                <td>
+                    <img src="http://10.105.10.7/empathy_nodered/img/line/line.png" height="75px" class="logoLine" />
+                </td>
+            </tr>
+        </table>
+        <br/>
+        <div style="width: 100%;">
+            <div id="divRefresh" class="divleft"></div>
+
+            <div id="divNonRe" class="divcenter"></div>
+
+            <div id="divLine" class="divright"></div>
+        </div>
+        <input id="hdRow" type="hidden" value="" />
+        <input id="hdRowType" type="hidden" value="" />
+        <input id="hdRowFCO" type="hidden" value="" />
+    </font>
+    <div id="status" style="color:red;right:0;bottom:0;position:absolute;"></div>
+</body>
+
+</html>
